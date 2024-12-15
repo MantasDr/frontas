@@ -1,0 +1,44 @@
+.lake-list-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .title {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 15px;
+  }
+  
+  .lake-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .lake-item {
+    background-color: #fff;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+  }
+  
+  .lake-item:hover {
+    transform: translateY(-3px);
+  }
+  
+  .lake-name {
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 5px;
+  }
+  
+  .lake-info {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+  }
