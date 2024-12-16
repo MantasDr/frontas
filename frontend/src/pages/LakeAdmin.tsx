@@ -1,294 +1,307 @@
 import React, { useState, useEffect } from "react";
 
-// Define the type for Ežeras
 type EzerasType = {
-  id: number;
+  id_Lake: number;
   name: string;
   type: string;
   depth: number;
-  location: string;
+  width: number;
+  length: number;
+  shores: number;
+  district: string;
+  x: number;
+  y: number;
+  recreation_area: boolean;
+  fk__Map_settings: number;
 };
 
 const EzerasPage: React.FC = () => {
   const [ezeras, setEzeras] = useState<EzerasType[]>([]);
-  const [popup, setPopup] = useState<"add" | "edit" | "delete" | "alert" | null>(null);
+  const [popup, setPopup] = useState<"add" | "edit" | "delete" | null>(null);
   const [selectedEzeras, setSelectedEzeras] = useState<EzerasType | null>(null);
   const [newEzeras, setNewEzeras] = useState({
     name: "",
     type: "",
     depth: 0,
-    location: "",
+    width: 0,
+    length: 0,
+    shores: 0,
+    district: "",
+    x: 0,
+    y: 0,
+    recreation_area: false,
+    fk__Map_settings: 1,
   });
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true); // Loading state
+  const [error, setError] = useState<string | null>(null); // Error state
 
-  // Mock data fetch
+  // Fetch lakes data from the backend
   useEffect(() => {
-    setEzeras([
-      { id: 1, name: "Lake A", type: "Freshwater", depth: 10, location: "Location A" },
-      { id: 2, name: "Lake B", type: "Saltwater", depth: 20, location: "Location B" },
-    ]);
+    fetch("http://localhost:8081/api/lakes")
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setEzeras(data);
+        } else {
+          setError("Failed to load lakes data.");
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        setError("Error fetching lakes data.");
+        setLoading(false);
+      });
   }, []);
 
+  // Add a new lake
   const createEzeras = () => {
-    if (!newEzeras.name || !newEzeras.type || !newEzeras.location || newEzeras.depth <= 0) {
-      return alert("Fill in all fields with valid data.");
-    }
-    const newId = ezeras.length ? Math.max(...ezeras.map((e) => e.id)) + 1 : 1;
-    const newEzersEntry = { id: newId, ...newEzeras };
-    setEzeras([...ezeras, newEzersEntry]);
-    setNewEzeras({ name: "", type: "", depth: 0, location: "" });
-    setPopup(null);
+    fetch("http://localhost:8081/api/lakes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newEzeras),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        setEzeras([...ezeras, { id_Lake: data.id_Lake, ...newEzeras }]);
+        setNewEzeras({
+          name: "",
+          type: "",
+          depth: 0,
+          width: 0,
+          length: 0,
+          shores: 0,
+          district: "",
+          x: 0,
+          y: 0,
+          recreation_area: false,
+          fk__Map_settings: 1,
+        });
+        setPopup(null); // Close the popup
+      })
+      .catch((error) => {
+        console.error("Error adding lake:", error);
+      });
   };
 
+  // Edit an existing lake
+  const editEzeras = () => {
+    if (selectedEzeras) {
+      fetch(`http://localhost:8081/api/lakes/${selectedEzeras.id_Lake}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(selectedEzeras),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to update lake");
+          }
+          return response.json();
+        })
+        .then((updatedLake) => {
+          setEzeras((prevEzeras) =>
+            prevEzeras.map((lake) =>
+              lake.id_Lake === updatedLake.id_Lake ? updatedLake : lake
+            )
+          );
+          setPopup(null); // Close the popup
+        })
+        .catch((error) => {
+          console.error("Error updating lake:", error);
+          alert("Failed to update lake. Please try again.");
+        });
+    }
+  };
+
+  // Delete a lake
   const deleteEzeras = (id: number) => {
-    setEzeras(ezeras.filter((e) => e.id !== id));
-    setSelectedEzeras(null);
-    setPopup(null);
+    fetch(`http://localhost:8081/api/lakes/${id}`, {
+      method: "DELETE",
+    })
+      .then(() => {
+        setEzeras(ezeras.filter((lake) => lake.id_Lake !== id));
+        setPopup(null); // Close the popup
+      })
+      .catch((error) => {
+        console.error("Error deleting lake:", error);
+      });
   };
-
-  const updateEzeras = () => {
-    if (!selectedEzeras) return;
-    setEzeras(ezeras.map((e) => (e.id === selectedEzeras.id ? selectedEzeras : e)));
-    setSelectedEzeras(null);
-    setPopup(null);
-  };
-
-  // Inline CSS
-  const tableStyle: React.CSSProperties = {
-    width: "100%",
-    borderCollapse: "collapse",
-    margin: "20px 0",
-  };
-
-  const thStyle: React.CSSProperties = {
-    border: "1px solid #ccc",
-    padding: "8px",
-    textAlign: "left",
-    backgroundColor: "#f2f2f2",
-  };
-
-  const tdStyle: React.CSSProperties = {
-    border: "1px solid #ccc",
-    padding: "8px",
-    textAlign: "left",
-    cursor: "pointer",
-  };
-
-  const selectedRowStyle: React.CSSProperties = {
-    ...tdStyle,
-  };
-
-  const popupStyle: React.CSSProperties = {
-    position: "fixed",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    background: "white",
-    border: "1px solid #ccc",
-    padding: "20px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    zIndex: 1000,
-    width: "300px",
-    borderRadius: "8px",
-  };
-
-  const overlayStyle: React.CSSProperties = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    background: "rgba(0, 0, 0, 0.5)",
-    zIndex: 999,
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    margin: "5px",
-    padding: "8px 12px",
-    background: "#007bff",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-  };
-
-  const cancelButtonStyle: React.CSSProperties = {
-    ...buttonStyle,
-    background: "#6c757d",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    display: "block",
-    margin: "10px 0",
-    width: "100%",
-    padding: "8px",
-    boxSizing: "border-box",
-  };
-
-  const alertStyle: React.CSSProperties = {
-    color: "red",
-    fontWeight: "bold",
-    marginTop: "20px",
-  };
-
-  // Animation for neon pulsing glow
-  const pulseAnimation = `
-    @keyframes pulse {
-      0% {
-        box-shadow: 0 0 10px 5px rgba(255, 0, 0, 0.7);
-      }
-      50% {
-        box-shadow: 0 0 20px 10px rgba(255, 0, 0, 0.5);
-      }
-      100% {
-        box-shadow: 0 0 10px 5px rgba(255, 0, 0, 0.7);
-      }
-    }
-  `;
 
   return (
     <div>
-      <h1>Ežerų Valdymas</h1>
+      <button className="button add" onClick={() => setPopup("add")}>
+        Pridėti ežerą
+      </button>
 
-      {/* Buttons */}
-      <div>
-        <button style={buttonStyle} onClick={() => setPopup("add")}>
-          Pridėti Ežerą
-        </button>
-      </div>
-
-      {/* Alert Message Popup */}
-      {popup === "alert" && (
-        <div style={overlayStyle} onClick={() => setPopup(null)}></div>
+      {loading ? (
+        <p>Kraunasi...</p>
+      ) : error ? (
+        <p>{error}</p>
+      ) : (
+        <table className="lake-table">
+          <thead>
+            <tr>
+              <th>Pavadinimas</th>
+              <th>Tipas</th>
+              <th>Gylis</th>
+              <th>Plotis</th>
+              <th>Ilgis</th>
+              <th>Krantai</th>
+              <th>Rajonas</th>
+              <th>X</th>
+              <th>Y</th>
+              <th>Poilsiavietė</th>
+              <th>Nustatymai</th>
+              <th>Veiksmai</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ezeras.map((lake) => (
+              <tr key={lake.id_Lake}>
+                <td>{lake.name}</td>
+                <td>{lake.type}</td>
+                <td>{lake.depth}</td>
+                <td>{lake.width}</td>
+                <td>{lake.length}</td>
+                <td>{lake.shores}</td>
+                <td>{lake.district}</td>
+                <td>{lake.x}</td>
+                <td>{lake.y}</td>
+                <td>{lake.recreation_area ? "Yes" : "No"}</td>
+                <td>{lake.fk__Map_settings}</td>
+                <td>
+                  <button
+                    className="button edit"
+                    onClick={() => {
+                      setSelectedEzeras(lake);
+                      setPopup("edit");
+                    }}
+                  >
+                    Keisti
+                  </button>
+                  <button
+                    className="button delete"
+                    onClick={() => {
+                      setSelectedEzeras(lake);
+                      setPopup("delete");
+                    }}
+                  >
+                    Ištrinti
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
-      {popup === "alert" && (
-        <div style={popupStyle}>
-          <h3 style={alertStyle}>{alertMessage}</h3>
-          <button style={buttonStyle} onClick={() => setPopup(null)}>
-            Užrakinti
-          </button>
-        </div>
-      )}
 
-      {/* Table of Ežerai */}
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <th style={thStyle}>ID</th>
-            <th style={thStyle}>Pavadinimas</th>
-            <th style={thStyle}>Tipas</th>
-            <th style={thStyle}>Gylis (m)</th>
-            <th style={thStyle}>Lokacija</th>
-            <th style={thStyle}>Veiksmai</th>
-          </tr>
-        </thead>
-        <tbody>
-  {ezeras.map((e) => (
-    <tr
-      key={e.id}
-      style={selectedEzeras?.id === e.id ? selectedRowStyle : tdStyle}
-      onClick={() => setSelectedEzeras(e)} // Set selected lake on row click
-    >
-      <td>{e.id}</td>
-      <td>{e.name}</td>
-      <td>{e.type}</td>
-      <td>{e.depth}</td>
-      <td>{e.location}</td>
-      <td>
-        <button
-          style={buttonStyle}
-          onClick={(event) => {
-            event.stopPropagation(); // Prevent the row click event from firing
-            setSelectedEzeras(e); // Pass the lake data
-            setPopup("edit");
-          }}
-        >
-          Redaguoti
-        </button>
-        <button
-          style={{ ...buttonStyle, backgroundColor: "#dc3545" }}
-          onClick={(event) => {
-            event.stopPropagation(); // Prevent the row click event from firing
-            setSelectedEzeras(e); // Pass the lake data
-            setPopup("delete");
-          }}
-        >
-          Ištrinti
-        </button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
-
-      </table>
-
-      {/* Popups */}
-      {popup && <div style={overlayStyle} onClick={() => setPopup(null)}></div>}
+      {/* Add Lake Popup */}
       {popup === "add" && (
-        <div style={popupStyle}>
-          <h3>Pridėti Naują Ežerą</h3>
+        <div className="popup">
+          <h3>Pridėti naują ežerą</h3>
           <input
             type="text"
-            placeholder="Pavadinimas"
+            placeholder="Name"
             value={newEzeras.name}
-            onChange={(e) => setNewEzeras({ ...newEzeras, name: e.target.value })}
-            style={inputStyle}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, name: e.target.value })
+            }
           />
           <input
             type="text"
-            placeholder="Tipas"
+            placeholder="Type"
             value={newEzeras.type}
-            onChange={(e) => setNewEzeras({ ...newEzeras, type: e.target.value })}
-            style={inputStyle}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, type: e.target.value })
+            }
           />
           <input
             type="number"
-            placeholder="Gylis"
+            placeholder="Depth"
             value={newEzeras.depth}
-            onChange={(e) => setNewEzeras({ ...newEzeras, depth: +e.target.value })}
-            style={inputStyle}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, depth: Number(e.target.value) })
+            }
+          />
+          <input
+            type="number"
+            placeholder="Width"
+            value={newEzeras.width}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, width: Number(e.target.value) })
+            }
+          />
+          <input
+            type="number"
+            placeholder="Length"
+            value={newEzeras.length}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, length: Number(e.target.value) })
+            }
+          />
+          <input
+            type="number"
+            placeholder="Shore Length"
+            value={newEzeras.shores}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, shores: Number(e.target.value) })
+            }
           />
           <input
             type="text"
-            placeholder="Lokacija"
-            value={newEzeras.location}
-            onChange={(e) => setNewEzeras({ ...newEzeras, location: e.target.value })}
-            style={inputStyle}
+            placeholder="District"
+            value={newEzeras.district}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, district: e.target.value })
+            }
           />
-          <button style={buttonStyle} onClick={createEzeras}>
-            Pridėti
-          </button>
-          <button style={cancelButtonStyle} onClick={() => setPopup(null)}>
-            Atšaukti
-          </button>
+          <input
+            type="number"
+            placeholder="X Coordinate"
+            value={newEzeras.x}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, x: Number(e.target.value) })
+            }
+          />
+          <input
+            type="number"
+            placeholder="Y Coordinate"
+            value={newEzeras.y}
+            onChange={(e) =>
+              setNewEzeras({ ...newEzeras, y: Number(e.target.value) })
+            }
+          />
+          <label>
+            Poilsiavietė
+            <input
+              type="checkbox"
+              checked={newEzeras.recreation_area}
+              onChange={(e) =>
+                setNewEzeras({
+                  ...newEzeras,
+                  recreation_area: e.target.checked,
+                })
+              }
+            />
+          </label>
+          <button onClick={createEzeras}>Pridėti</button>
+          <button onClick={() => setPopup(null)}>Atšaukti</button>
         </div>
       )}
 
-      {/* Delete Confirmation */}
-      {popup === "delete" && selectedEzeras && (
-        <div style={popupStyle}>
-          <h3>Ar tikrai norite ištrinti „{selectedEzeras.name}“?</h3>
-          <button style={buttonStyle} onClick={() => deleteEzeras(selectedEzeras.id)}>
-            Taip
-          </button>
-          <button style={cancelButtonStyle} onClick={() => setPopup(null)}>
-            Ne
-          </button>
-        </div>
-      )}
-
-      {/* Edit Ežeras */}
+      {/* Edit Lake Popup */}
       {popup === "edit" && selectedEzeras && (
-        <div style={popupStyle}>
-          <h3>Redaguoti Ežerą</h3>
+        <div className="popup">
+          <h3>Keisti ežerą</h3>
           <input
             type="text"
             value={selectedEzeras.name}
             onChange={(e) =>
               setSelectedEzeras({ ...selectedEzeras, name: e.target.value })
             }
-            style={inputStyle}
           />
           <input
             type="text"
@@ -296,34 +309,244 @@ const EzerasPage: React.FC = () => {
             onChange={(e) =>
               setSelectedEzeras({ ...selectedEzeras, type: e.target.value })
             }
-            style={inputStyle}
           />
           <input
             type="number"
             value={selectedEzeras.depth}
             onChange={(e) =>
-              setSelectedEzeras({ ...selectedEzeras, depth: +e.target.value })
+              setSelectedEzeras({
+                ...selectedEzeras,
+                depth: Number(e.target.value),
+              })
             }
-            style={inputStyle}
+          />
+          <input
+            type="number"
+            value={selectedEzeras.width}
+            onChange={(e) =>
+              setSelectedEzeras({
+                ...selectedEzeras,
+                width: Number(e.target.value),
+              })
+            }
+          />
+          <input
+            type="number"
+            value={selectedEzeras.length}
+            onChange={(e) =>
+              setSelectedEzeras({
+                ...selectedEzeras,
+                length: Number(e.target.value),
+              })
+            }
+          />
+          <input
+            type="number"
+            value={selectedEzeras.shores}
+            onChange={(e) =>
+              setSelectedEzeras({
+                ...selectedEzeras,
+                shores: Number(e.target.value),
+              })
+            }
           />
           <input
             type="text"
-            value={selectedEzeras.location}
+            value={selectedEzeras.district}
             onChange={(e) =>
-              setSelectedEzeras({ ...selectedEzeras, location: e.target.value })
+              setSelectedEzeras({
+                ...selectedEzeras,
+                district: e.target.value,
+              })
             }
-            style={inputStyle}
           />
-          <button style={buttonStyle} onClick={updateEzeras}>
-            Atnaujinti
-          </button>
-          <button style={cancelButtonStyle} onClick={() => setPopup(null)}>
-            Atšaukti
-          </button>
+          <input
+            type="number"
+            value={selectedEzeras.x}
+            onChange={(e) =>
+              setSelectedEzeras({
+                ...selectedEzeras,
+                x: Number(e.target.value),
+              })
+            }
+          />
+          <input
+            type="number"
+            value={selectedEzeras.y}
+            onChange={(e) =>
+              setSelectedEzeras({
+                ...selectedEzeras,
+                y: Number(e.target.value),
+              })
+            }
+          />
+          <label>
+            Poilsiavietė
+            <input
+              type="checkbox"
+              checked={selectedEzeras.recreation_area}
+              onChange={(e) =>
+                setSelectedEzeras({
+                  ...selectedEzeras,
+                  recreation_area: e.target.checked,
+                })
+              }
+            />
+          </label>
+          <button onClick={editEzeras}>Išsaugoti</button>
+          <button onClick={() => setPopup(null)}>Atšaukti</button>
         </div>
       )}
 
-      <style>{pulseAnimation}</style>
+      {/* Delete Confirmation Popup */}
+      {popup === "delete" && selectedEzeras && (
+        <div className="popup">
+          <h3>Ar tikrai norite ištrinti ežerą: {selectedEzeras.name}?</h3>
+          <button onClick={() => deleteEzeras(selectedEzeras.id_Lake)}>
+            Taip
+          </button>
+          <button onClick={() => setPopup(null)}>Atšaukti</button>
+        </div>
+
+      )}
+  {/* Popup Overlay */}
+  {popup && <div className="popup-overlay" onClick={() => setPopup(null)} />}
+  
+  <style>{`
+        /* General Styling */
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f4f9;
+          margin: 0;
+          padding: 0;
+        }
+
+        h3 {
+          margin-bottom: 20px;
+        }
+
+        button {
+          background-color: #4CAF50;
+          color: white;
+          padding: 10px 20px;
+          border: none;
+          cursor: pointer;
+          border-radius: 5px;
+          font-size: 16px;
+          margin-right: 10px;
+          transition: background-color 0.3s;
+        }
+
+        button:hover {
+          background-color: #45a049;
+        }
+
+        button:active {
+          background-color: #3e8e41;
+        }
+
+        .lake-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+          background-color: white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .lake-table th,
+        .lake-table td {
+          padding: 12px;
+          text-align: center;
+          border: 1px solid #ddd;
+        }
+
+        .lake-table th {
+          background-color: #f4f4f4;
+          font-weight: bold;
+        }
+
+        .lake-table tr:hover {
+          background-color: #f1f1f1;
+        }
+
+        .popup {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          background-color: #ffffff;
+          padding: 20px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          z-index: 1000;
+          width: 300px;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+
+        .popup input,
+        .popup select {
+          padding: 10px;
+          margin: 5px 0;
+          border-radius: 5px;
+          border: 1px solid #ddd;
+        }
+
+        .popup input[type="checkbox"] {
+          margin-right: 10px;
+        }
+
+        .popup button {
+          width: 100%;
+        }
+
+        .popup button:nth-child(2) {
+          background-color: #f44336;
+        }
+
+        .popup button:nth-child(2):hover {
+          background-color: #e53935;
+        }
+
+        .popup button:nth-child(2):active {
+          background-color: #d32f2f;
+        }
+
+        .popup-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+        }
+
+        .button.add {
+          background-color: #008CBA;
+        }
+
+        .button.add:hover {
+          background-color: #007bb5;
+        }
+
+        .button.add:active {
+          background-color: #006d99;
+        }
+
+        .button.delete {
+          background-color: #f44336;
+        }
+
+        .button.delete:hover {
+          background-color: #e53935;
+        }
+
+        .button.delete:active {
+          background-color: #d32f2f;
+        }
+      `}</style>
     </div>
   );
 };

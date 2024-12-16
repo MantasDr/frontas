@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 // Define the type for Rank
 type RankType = {
-  id: number;
+  id_Rank: number;
   name: string;
-  description: string;
-  points: number;
-  date: string;
+  exp: number;
 };
 
 const RankPage: React.FC = () => {
   const [ranks, setRanks] = useState<RankType[]>([]);
 
-  // Mock data fetch
+  // Fetch data from the backend
   useEffect(() => {
-    setRanks([
-      { id: 1, name: "Naujokas", description: "Pirmas žingsnis", points: 10, date: "2024-01-01" },
-      { id: 2, name: "Patyręs", description: "Pasiekta 50 taškų", points: 50, date: "2024-03-15" },
-      { id: 3, name: "Ekspertas", description: "Pasiekta 100 taškų", points: 100, date: "2024-06-15" },
-    ]);
+    const fetchRanks = async () => {
+      try {
+        const response = await axios.get("http://localhost:8081/ranks");
+        setRanks(response.data);
+      } catch (error) {
+        console.error("Error fetching ranks:", error);
+      }
+    };
+
+    fetchRanks();
   }, []);
 
   // Inline CSS
@@ -41,17 +45,6 @@ const RankPage: React.FC = () => {
     textAlign: "left",
   };
 
-  // Button styles (optional, can be added if necessary)
-  const buttonStyle: React.CSSProperties = {
-    margin: "5px",
-    padding: "8px 12px",
-    background: "#007bff",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-  };
-
   return (
     <div>
       <h1>Rangų valdymas</h1>
@@ -60,19 +53,17 @@ const RankPage: React.FC = () => {
       <table style={tableStyle}>
         <thead>
           <tr>
+            <th style={thStyle}>ID</th>
             <th style={thStyle}>Rangas</th>
-            <th style={thStyle}>Aprašymas</th>
-            <th style={thStyle}>Taškai</th>
-            <th style={thStyle}>Data</th>
+            <th style={thStyle}>EXP</th>
           </tr>
         </thead>
         <tbody>
-          {ranks.map((r) => (
-            <tr key={r.id}>
-              <td>{r.name}</td>
-              <td>{r.description}</td>
-              <td>{r.points}</td>
-              <td>{r.date}</td>
+          {ranks.map((rank) => (
+            <tr key={rank.id_Rank}>
+              <td>{rank.id_Rank}</td>
+              <td>{rank.name}</td>
+              <td>{rank.exp}</td>
             </tr>
           ))}
         </tbody>

@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 type FishType = {
   id: number;
   name: string;
-  species: string;
+  type: string;
   size: number;
-  location: string;
+  location?: string;  // Not saved in database
+  description?: string;  // Not saved in database
+  picture?: string;
 };
 
 const FishPage: React.FC = () => {
@@ -15,28 +17,146 @@ const FishPage: React.FC = () => {
   const [selectedFish, setSelectedFish] = useState<FishType | null>(null);
   const [newFish, setNewFish] = useState({
     name: "",
-    species: "",
+    type: "",
     size: 0,
-    location: "",
+    picture: "",
   });
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
+  // useEffect(() => {
+  //   // Fetch fish data from Wikipedia API
+  //   fetchFishFromWikipedia();
+  // }, []);
+
+  const fetchFishFromWikipedia = async () => {
+    setLoading(true);
+    let allFish = [];
+    let continueToken;
+  
+    try {
+      do {
+        const url = new URL("https://en.wikipedia.org/w/api.php");
+        url.searchParams.append("action", "query");
+        url.searchParams.append("format", "json");
+        url.searchParams.append("list", "categorymembers");
+        url.searchParams.append("cmtitle", "Category:Fish_species");
+        url.searchParams.append("cmlimit", "200");
+        url.searchParams.append("cmcontinue", continueToken || "");
+        url.searchParams.append("origin", "*");
+  
+        const response = await fetch(url.toString());
+        const data = await response.json();
+  
+        if (data.query && data.query.categorymembers) {
+          const fishBatch = data.query.categorymembers.map((member) => ({
+            name: member.title,
+            type: "Unknown",
+            size: 0,
+            description: "No description available",
+            picture: member.thumbnail?.source || "",
+          }));
+          allFish = [...allFish, ...fishBatch];
+        }
+  
+        continueToken = data.continue?.cmcontinue;
+      } while (continueToken);
+  
+      const enrichedFish = await Promise.all(
+        allFish.map((fish) => fetchFishDetails(fish))
+      );
+  
+      setFishes(enrichedFish);
+  
+      // Send the fish data to the backend
+      const response = await fetch("http://localhost:8081/fishes/wikipedia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(enrichedFish.map(({ id, ...rest }) => rest)),
+      });
+      
+  
+      if (response.ok) {
+        setAlertMessage("Fishes successfully added to the database!");
+      } else {
+        setAlertMessage("Failed to save fishes to the database.");
+      }
+    } catch (error) {
+      console.error("Error fetching data from Wikipedia:", error);
+      setAlertMessage("Error occurred while fetching Wikipedia data.");
+    }
+    setLoading(false);
+  };
+  
+  
+
+  const fetchFishDetails = async (fish: FishType): Promise<FishType> => {
+    try {
+      const url = new URL("https://en.wikipedia.org/w/api.php");
+      url.searchParams.append("action", "query");
+      url.searchParams.append("format", "json");
+      url.searchParams.append("prop", "description|pageimages|infobox");
+      url.searchParams.append("pageids", fish.id.toString());
+      url.searchParams.append("pithumbsize", "200");
+      url.searchParams.append("origin", "*");
+  
+      const response = await fetch(url.toString());
+      const data = await response.json();
+  
+      const page = data.query?.pages[fish.id];
+      if (page) {
+        const updatedFish: FishType = {
+          ...fish,
+          description: page.description || "No description available",
+          picture: page.thumbnail?.source || "",
+          size: extractSizeFromText(page.extract || ""),
+          location: extractLocationFromText(page.extract || ""),
+        };
+        return updatedFish;
+      }
+    } catch (error) {
+      console.error("Error fetching fish details:", error);
+    }
+    return fish;
+  };
+  
+
+  const extractSizeFromText = (text: string): number => {
+    const sizeMatch = text.match(/(length|weight):? ?(\d+\.?\d*)\s?(cm|kg)?/i);
+    return sizeMatch ? parseFloat(sizeMatch[2]) : 0;
+  };
+  
+  const extractLocationFromText = (text: string): string => {
+    const locationMatch = text.match(/habitat:? ?([a-zA-Z\s,]+(?:ocean|sea|lake|river)?)/i);
+    return locationMatch ? locationMatch[1] : "";
+  };
   // Mock data fetch
   useEffect(() => {
-    setFishes([
-      { id: 1, name: "Fish A", species: "Salmon", size: 30, location: "River A" },
-      { id: 2, name: "Fish B", species: "Trout", size: 25, location: "River B" },
-    ]);
+    fetchFishesFromBackend();
   }, []);
+  
+  const fetchFishesFromBackend = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/fishes");
+      if (response.ok) {
+        const data = await response.json();
+        setFishes(data);  // Assuming the API returns an array of fish objects
+      } else {
+        console.error("Failed to fetch fish data.");
+      }
+    } catch (error) {
+      console.error("Error fetching fish data:", error);
+    }
+  };
 
   const createFish = () => {
-    if (!newFish.name || !newFish.species || !newFish.location || newFish.size <= 0) {
+    if (!newFish.name || !newFish.type  || newFish.size <= 0) {
       return alert("Fill in all fields with valid data.");
     }
     const newId = fishes.length ? Math.max(...fishes.map((f) => f.id)) + 1 : 1;
     const newFishEntry = { id: newId, ...newFish };
     setFishes([...fishes, newFishEntry]);
-    setNewFish({ name: "", species: "", size: 0, location: "" });
+    setNewFish({ name: "", type: "", size: 0, picture: ""});
     setPopup(null);
   };
 
@@ -177,8 +297,9 @@ const FishPage: React.FC = () => {
             <th style={thStyle}>ID</th>
             <th style={thStyle}>Pavadinimas</th>
             <th style={thStyle}>Rūšis</th>
-            <th style={thStyle}>Dydis (cm)</th>
+            <th style={thStyle}>Dydis</th>
             <th style={thStyle}>Lokacija</th>
+            <th style={thStyle}>Nuotrauka</th>
             <th style={thStyle}>Veiksmai</th>
           </tr>
         </thead>
@@ -191,9 +312,12 @@ const FishPage: React.FC = () => {
             >
               <td>{f.id}</td>
               <td>{f.name}</td>
-              <td>{f.species}</td>
+              <td>{f.type}</td>
               <td>{f.size}</td>
               <td>{f.location}</td>
+              <td>
+                  {f.picture && <img src={f.picture} alt={f.name} style={{ width: "10px" }} />}
+              </td>
               <td>
                 <button
                   style={buttonStyle}
@@ -236,8 +360,8 @@ const FishPage: React.FC = () => {
           <input
             type="text"
             placeholder="Rūšis"
-            value={newFish.species}
-            onChange={(e) => setNewFish({ ...newFish, species: e.target.value })}
+            value={newFish.type}
+            onChange={(e) => setNewFish({ ...newFish, type: e.target.value })}
             style={inputStyle}
           />
           <input
@@ -245,13 +369,6 @@ const FishPage: React.FC = () => {
             placeholder="Dydis"
             value={newFish.size}
             onChange={(e) => setNewFish({ ...newFish, size: +e.target.value })}
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            placeholder="Lokacija"
-            value={newFish.location}
-            onChange={(e) => setNewFish({ ...newFish, location: e.target.value })}
             style={inputStyle}
           />
           <button style={buttonStyle} onClick={createFish}>
@@ -290,9 +407,9 @@ const FishPage: React.FC = () => {
           />
           <input
             type="text"
-            value={selectedFish.species}
+            value={selectedFish.type}
             onChange={(e) =>
-              setSelectedFish({ ...selectedFish, species: e.target.value })
+              setSelectedFish({ ...selectedFish, type: e.target.value })
             }
             style={inputStyle}
           />
@@ -307,7 +424,7 @@ const FishPage: React.FC = () => {
           <input
             type="text"
             value={selectedFish.location}
-            onChange={(e) =>
+            onChange={(e) => 
               setSelectedFish({ ...selectedFish, location: e.target.value })
             }
             style={inputStyle}

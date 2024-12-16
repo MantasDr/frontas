@@ -1,127 +1,135 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 
 interface Post {
   id: number;
+  date: string;
+  time: string;
   content: string;
-  fish: string[];
-  lake: string;
+  picture: string;
+  userId: number;
+  userName: string;
 }
 
 const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [newPostContent, setNewPostContent] = useState<string>('');
-  const [newPostFish, setNewPostFish] = useState<string[]>(['eserys']);
-  const [newPostLake, setNewPostLake] = useState<string>('kauno marios');
-  const [isCreatePopupOpen, setCreatePopupOpen] = useState<boolean>(false);
-  const [isEditPopupOpen, setEditPopupOpen] = useState<boolean>(false);
-  const [isDeletePopupOpen, setDeletePopupOpen] = useState<boolean>(false);
-  const [postToDelete, setPostToDelete] = useState<number | null>(null); // Store the post to be deleted
-  const [editPostId, setEditPostId] = useState<number | null>(null);
-  const [editPostContent, setEditPostContent] = useState<string>('');
-  const [editPostFish, setEditPostFish] = useState<string[]>(['eserys']);
-  const [editPostLake, setEditPostLake] = useState<string>('kauno marios');
+  const [newPostContent, setNewPostContent] = useState<string>("");
+  const [newPostPicture, setNewPostPicture] = useState<string>("");
+  const [newPostUserId, setNewPostUserId] = useState<number>(1); // Mock user ID
+  const [editingPostId, setEditingPostId] = useState<number | null>(null); // To track the post being edited
+  const [editingContent, setEditingContent] = useState<string>("");
+  const [editingPicture, setEditingPicture] = useState<string>("");
+
+  // Fetch posts from backend
+  const fetchPosts = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/posts");
+      const data = await response.json();
+      setPosts(data);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    }
+  };
 
   // Create a new post
-  const createPost = () => {
+  const createPost = async () => {
     if (newPostContent.trim()) {
-      setPosts([
-        ...posts,
-        {
-          id: Date.now(),
-          content: newPostContent,
-          fish: newPostFish,
-          lake: newPostLake,
-        },
-      ]);
-      setNewPostContent('');
-      setNewPostFish(['eserys']);
-      setNewPostLake('kauno marios');
-      closeCreatePopup(); // Close the popup after posting
+      try {
+        const response = await fetch("http://localhost:8081/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: newPostContent,
+            picture: newPostPicture,
+            userId: newPostUserId,
+          }),
+        });
+        const newPost = await response.json();
+        setPosts([newPost, ...posts]); // Prepend new post to the feed
+        setNewPostContent("");
+        setNewPostPicture("");
+      } catch (error) {
+        console.error("Error creating post:", error);
+      }
     }
   };
 
-  // Open edit popup
-  const startEditing = (id: number) => {
-    const postToEdit = posts.find((post) => post.id === id);
-    if (postToEdit) {
-      setEditPostId(postToEdit.id);
-      setEditPostContent(postToEdit.content);
-      setEditPostFish(postToEdit.fish);
-      setEditPostLake(postToEdit.lake);
-      setEditPopupOpen(true);
+  // Edit an existing post
+  const editPost = async (id: number) => {
+    try {
+      const response = await fetch(`http://localhost:8081/posts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: editingContent,
+          picture: editingPicture,
+        }),
+      });
+      const updatedPost = await response.json();
+      setPosts(posts.map((post) => (post.id === id ? updatedPost : post)));
+      setEditingPostId(null); // Close the edit form
+      setEditingContent("");
+      setEditingPicture("");
+    } catch (error) {
+      console.error("Error editing post:", error);
     }
   };
 
-  // Save edited post
-  const savePost = () => {
-    if (editPostId !== null && editPostContent.trim()) {
-      setPosts(
-        posts.map((post) =>
-          post.id === editPostId
-            ? { ...post, content: editPostContent, fish: editPostFish, lake: editPostLake }
-            : post
-        )
-      );
-      closeEditPopup();
+  // Delete a post
+  const deletePost = async (id: number) => {
+    try {
+      await fetch(`http://localhost:8081/posts/${id}`, {
+        method: "DELETE",
+      });
+      setPosts(posts.filter((post) => post.id !== id));
+    } catch (error) {
+      console.error("Error deleting post:", error);
     }
   };
 
-  // Delete post
-  const deletePost = () => {
-    if (postToDelete !== null) {
-      setPosts(posts.filter((post) => post.id !== postToDelete));
-      setPostToDelete(null);
-      closeDeletePopup(); // Close delete popup
-    }
-  };
-
-  // Open delete confirmation popup
-  const openDeletePopup = (id: number) => {
-    setPostToDelete(id);
-    setDeletePopupOpen(true);
-  };
-
-  // Close edit popup
-  const closeEditPopup = () => {
-    setEditPopupOpen(false);
-    setEditPostId(null);
-    setEditPostContent('');
-    setEditPostFish(['eserys']);
-    setEditPostLake('kauno marios');
-  };
-
-  // Close create post popup
-  const closeCreatePopup = () => {
-    setCreatePopupOpen(false);
-    setNewPostContent('');
-    setNewPostFish(['eserys']);
-    setNewPostLake('kauno marios');
-  };
-
-  // Close delete confirmation popup
-  const closeDeletePopup = () => {
-    setDeletePopupOpen(false);
-    setPostToDelete(null);
-  };
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   return (
-    <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>Žvejybos Įrašai</h1>
 
-      {/* Create Post Button */}
-      <button
-        onClick={() => setCreatePopupOpen(true)}
-        style={{
-          padding: '10px 20px',
-          fontSize: '16px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-      >
-        Sukurti Įrašą
-      </button>
+      {/* Create Post Section */}
+      <div style={{ marginBottom: "20px" }}>
+        <h2>Sukurti Įrašą</h2>
+        <textarea
+          value={newPostContent}
+          onChange={(e) => setNewPostContent(e.target.value)}
+          rows={3}
+          style={{ width: "100%", padding: "10px", fontSize: "16px" }}
+          placeholder="Parašykite savo įrašą"
+        />
+        <input
+          type="text"
+          value={newPostPicture}
+          onChange={(e) => setNewPostPicture(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "10px",
+            margin: "10px 0",
+            fontSize: "16px",
+          }}
+          placeholder="Nuotraukos nuoroda (neprivaloma)"
+        />
+        <button
+          onClick={createPost}
+          style={{
+            padding: "10px 20px",
+            fontSize: "16px",
+            backgroundColor: "#28a745",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Paskelbti
+        </button>
+      </div>
 
       {/* Posts Section */}
       <div>
@@ -132,260 +140,112 @@ const Feed: React.FC = () => {
             <div
               key={post.id}
               style={{
-                border: '1px solid #ccc',
-                padding: '10px',
-                marginBottom: '10px',
-                borderRadius: '5px',
+                border: "1px solid #ccc",
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "5px",
               }}
             >
-              <p><strong>Žuvis:</strong> {post.fish.join(', ')}</p>
-              <p><strong>Ūkis:</strong> {post.lake}</p>
-              <p style={{ margin: 0 }}>{post.content}</p>
-              <button
-                onClick={() => startEditing(post.id)}
-                style={{
-                  marginTop: '10px',
-                  padding: '5px 10px',
-                  fontSize: '14px',
-                  backgroundColor: '#ffc107',
-                  color: 'black',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                Redaguoti
-              </button>
-              <button
-                onClick={() => openDeletePopup(post.id)}
-                style={{
-                  marginTop: '10px',
-                  padding: '5px 10px',
-                  fontSize: '14px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  cursor: 'pointer',
-                  marginLeft: '10px',
-                }}
-              >
-                Ištrinti
-              </button>
+              <p>
+                <strong>{post.userName}</strong> - {post.date} {post.time}
+              </p>
+              {editingPostId === post.id ? (
+                <div>
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    rows={3}
+                    style={{ width: "100%", padding: "10px", fontSize: "16px" }}
+                    placeholder="Edit your post"
+                  />
+                  <input
+                    type="text"
+                    value={editingPicture}
+                    onChange={(e) => setEditingPicture(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      margin: "10px 0",
+                      fontSize: "16px",
+                    }}
+                    placeholder="Edit picture URL"
+                  />
+                  <button
+                    onClick={() => editPost(post.id)}
+                    style={{
+                      padding: "10px 20px",
+                      fontSize: "16px",
+                      backgroundColor: "#007bff",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Išsaugoti
+                  </button>
+                  <button
+                    onClick={() => setEditingPostId(null)}
+                    style={{
+                      padding: "10px 20px",
+                      fontSize: "16px",
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    Atšaukti
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p>{post.content}</p>
+                  {post.picture && (
+                    <img
+                      src={post.picture}
+                      alt="Post"
+                      style={{ maxWidth: "100%", marginTop: "10px" }}
+                    />
+                  )}
+                  <button
+                    onClick={() => {
+                      setEditingPostId(post.id);
+                      setEditingContent(post.content);
+                      setEditingPicture(post.picture);
+                    }}
+                    style={{
+                      padding: "5px 10px",
+                      fontSize: "14px",
+                      backgroundColor: "#007bff",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      marginTop: "10px",
+                    }}
+                  >
+                    Redaguoti
+                  </button>
+                  <button
+                    onClick={() => deletePost(post.id)}
+                    style={{
+                      padding: "5px 10px",
+                      fontSize: "14px",
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      marginLeft: "10px",
+                    }}
+                  >
+                    Ištrinti
+                  </button>
+                </>
+              )}
             </div>
           ))
         )}
       </div>
-
-      {/* Edit Post Popup */}
-      {isEditPopupOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '10px',
-            padding: '20px',
-            zIndex: 1000,
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2>Redaguoti Įrašą</h2>
-          <textarea
-            value={editPostContent}
-            onChange={(e) => setEditPostContent(e.target.value)}
-            rows={3}
-            style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-          />
-          <div style={{ margin: '10px 0' }}>
-            <label>
-              Kokia žuvis:
-              <select
-                multiple
-                value={editPostFish}
-                onChange={(e) => setEditPostFish(Array.from(e.target.selectedOptions, option => option.value))}
-                style={{ marginLeft: '10px', padding: '5px' }}
-              >
-                <option value="eserys">Ešerys</option>
-                <option value="lydeka">Lydeka</option>
-                <option value="karosas">Karosas</option>
-              </select>
-            </label>
-          </div>
-          <div style={{ margin: '10px 0' }}>
-            <label>
-              Koks ežeras:
-              <select
-                value={editPostLake}
-                onChange={(e) => setEditPostLake(e.target.value)}
-                style={{ marginLeft: '10px', padding: '5px' }}
-              >
-                <option value="kauno marios">Kauno Marios</option>
-                <option value="ezeras">Ežeras</option>
-              </select>
-            </label>
-          </div>
-          <button
-            onClick={savePost}
-            style={{
-              marginTop: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Išsaugoti
-          </button>
-          <button
-            onClick={closeEditPopup}
-            style={{
-              marginLeft: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Atšaukti
-          </button>
-        </div>
-      )}
-
-      {/* Create Post Popup */}
-      {isCreatePopupOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '10px',
-            padding: '20px',
-            zIndex: 1000,
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2>Sukurti Įrašą</h2>
-          <textarea
-            value={newPostContent}
-            onChange={(e) => setNewPostContent(e.target.value)}
-            rows={3}
-            style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-          />
-          <div style={{ margin: '10px 0' }}>
-            <label>
-              Kokia žuvis:
-              <select
-                multiple
-                value={newPostFish}
-                onChange={(e) => setNewPostFish(Array.from(e.target.selectedOptions, option => option.value))}
-                style={{ marginLeft: '10px', padding: '5px' }}
-              >
-                <option value="eserys">Ešerys</option>
-                <option value="lydeka">Lydeka</option>
-                <option value="karosas">Karosas</option>
-              </select>
-            </label>
-          </div>
-          <div style={{ margin: '10px 0' }}>
-            <label>
-              Koks ežeras:
-              <select
-                value={newPostLake}
-                onChange={(e) => setNewPostLake(e.target.value)}
-                style={{ marginLeft: '10px', padding: '5px' }}
-              >
-                <option value="kauno marios">Kauno Marios</option>
-                <option value="ezeras">Ežeras</option>
-              </select>
-            </label>
-          </div>
-          <button
-            onClick={createPost}
-            style={{
-              marginTop: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Paskelbti
-          </button>
-          <button
-            onClick={closeCreatePopup}
-            style={{
-              marginLeft: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Atšaukti
-          </button>
-        </div>
-      )}
-
-      {/* Delete Confirmation Popup */}
-      {isDeletePopupOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
-            borderRadius: '10px',
-            padding: '20px',
-            zIndex: 1000,
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          }}
-        >
-          <h2>Ar tikrai norite ištrinti šį įrašą?</h2>
-          <button
-            onClick={deletePost}
-            style={{
-              marginTop: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Ištrinti
-          </button>
-          <button
-            onClick={closeDeletePopup}
-            style={{
-              marginLeft: '10px',
-              padding: '5px 10px',
-              fontSize: '14px',
-              backgroundColor: '#dc3545',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Atšaukti
-          </button>
-        </div>
-      )}
     </div>
   );
 };

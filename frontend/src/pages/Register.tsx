@@ -28,6 +28,18 @@ const formSchema = z.object({
   username: z.string().min(1, {
     message: "Privaloma įvesti vartotojo vardą",
   }),
+  realname: z.string().min(1, {
+    message: "Privaloma įvesti vardą",
+  }),
+  surname: z.string().min(1, {
+    message: "Privaloma įvesti pavardę",
+  }),
+  birth: z.string().min(1, {
+    message: "Privaloma įvesti gimimo datą",
+  }),
+  city: z.string().min(1, {
+    message: "Privaloma įvesti miestą",
+  }),
   password: z.string().min(1, { message: "Būtinas slaptažodis" }),
 //  email: z.string().email({ message: "Netinkamas elektroninis paštas" }),
 });
@@ -41,7 +53,10 @@ export default function Register() {
     defaultValues: {
       username: "",
       password: "",
-  //    email: "",
+      realname: "",
+      surname: "",
+      birth: "",
+      city: "",
     },
   });
 
@@ -64,68 +79,111 @@ export default function Register() {
   
 
   return (
-    <Card className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96">
-      <CardHeader>
-        <img src="../../../public/logo.png" width={500} />
-        <h1 className="mx-auto font-bold text-gray-900">Registracija</h1>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Elektroninis paštas</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Įveskite elektroninį paštą"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            /> */}
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vartotojo vardas</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Įveskite vartotojo vardą" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Slaptažodis</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Įveskitę slaptažodį"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {error && <FormMessage>{error}</FormMessage>}
-            <a className="block text-sm" href="/login">
-              Jau turite paskyra? Prisijunkite.
-            </a>
-            <Button type="submit">Registruotis</Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <Card className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-6 mt-20">
+  <CardHeader className="text-center">
+    <img src="../../../public/logo.png" className="mx-auto mb-4" width={150} />
+    <h1 className="font-bold text-gray-900 text-2xl">Registracija</h1>
+  </CardHeader>
+  <CardContent>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Vartotojo vardas</FormLabel>
+              <FormControl>
+                <Input placeholder="Įveskite vartotojo vardą" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="realname"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Vardas</FormLabel>
+              <FormControl>
+                <Input placeholder="Įveskite vardą" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="surname"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pavardė</FormLabel>
+              <FormControl>
+                <Input placeholder="Įveskite pavardę" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="birth"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Gimimo data</FormLabel>
+              <FormControl>
+                <Input type="date" placeholder="Įveskite gimimo datą" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="city"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Miestas</FormLabel>
+              <FormControl>
+                <Input placeholder="Įveskite gyvenamąjį miestą" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Slaptažodis</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Įveskite slaptažodį" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        {error && <FormMessage>{error}</FormMessage>}
+        
+        <a className="block text-sm text-center" href="/login">
+          Jau turite paskyrą? Prisijunkite.
+        </a>
+        
+        <Button type="submit" className="w-full">
+          Registruotis
+        </Button>
+      </form>
+    </Form>
+  </CardContent>
+</Card>
+
   );
 }

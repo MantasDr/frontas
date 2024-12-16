@@ -39,14 +39,7 @@ export default function Login() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await axios.post(
-        "auth/login",
-        {
-          login: values.username,
-          password: values.password,
-        },
-        { withCredentials: true }
-      );
+      await axios.post("http://localhost:8081/login", values, { withCredentials: true });
 
       setIsAuthenticated(true);
       navigate("/");

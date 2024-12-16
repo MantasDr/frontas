@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 // Define the type for Achievement
 type AchievementType = {
-  id: number;
-  name: string;
-  description: string;
-  points: number;
+  id_Achievement: number;
+  fish_weight: number;
+  prize: string;
   date: string;
+  fish_count: number;
+  post_count: number;
+  fk_Post: number;
 };
 
 const AchievementsPage: React.FC = () => {
@@ -14,57 +17,120 @@ const AchievementsPage: React.FC = () => {
   const [popup, setPopup] = useState<"add" | "edit" | "delete" | "alert" | null>(null);
   const [selectedAchievement, setSelectedAchievement] = useState<AchievementType | null>(null);
   const [newAchievement, setNewAchievement] = useState({
-    name: "",
-    description: "",
-    points: 0,
+    fish_weight: 0,
+    prize: "",
     date: "",
+    fish_count: 0,
+    post_count: 0,
+    fk_Post: 0,
   });
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
-  // Mock data fetch
+  // Fetch achievements from the backend when the component mounts
   useEffect(() => {
-    setAchievements([
-      { id: 1, name: "Pirmas žingsnis", description: "Baigtas pirmas pasiekimas", points: 10, date: "2024-01-01" },
-      { id: 2, name: "Ekspertas", description: "Pasiekta 100 taškų", points: 100, date: "2024-06-15" },
-    ]);
+    const fetchAchievements = async () => {
+      try {
+        const response = await axios.get("http://localhost:8081/achievements"); // Adjust the URL as needed
+        setAchievements(response.data);
+      } catch (error) {
+        console.error("Error fetching achievements:", error);
+      }
+    };
+    fetchAchievements();
   }, []);
 
-  const createAchievement = () => {
-    if (!newAchievement.name || !newAchievement.description || newAchievement.points <= 0 || !newAchievement.date) {
+  // Handle creating a new achievement
+  const createAchievement = async () => {
+    if (
+      newAchievement.fish_weight <= 0 ||
+      !newAchievement.prize ||
+      !newAchievement.date ||
+      newAchievement.fish_count <= 0 ||
+      newAchievement.post_count <= 0 ||
+      newAchievement.fk_Post <= 0
+    ) {
       return alert("Užpildykite visus laukus su teisingais duomenimis.");
     }
-    const newId = achievements.length ? Math.max(...achievements.map((a) => a.id)) + 1 : 1;
-    const newAchievementEntry = { id: newId, ...newAchievement };
-    setAchievements([...achievements, newAchievementEntry]);
-    setNewAchievement({ name: "", description: "", points: 0, date: "" });
-    setPopup(null);
+    try {
+      const response = await axios.post("http://localhost:8081/achievements", newAchievement); // Adjust the URL as needed
+      setAchievements([...achievements, response.data]);
+      setNewAchievement({
+        fish_weight: 0,
+        prize: "",
+        date: "",
+        fish_count: 0,
+        post_count: 0,
+        fk_Post: 0,
+      });
+      setPopup(null);
+    } catch (error) {
+      console.error("Error creating achievement:", error);
+    }
   };
 
-  const deleteAchievement = () => {
+  const deleteAchievement = async () => {
     if (!selectedAchievement) {
-      setAlertMessage("Pasirinkite pasiekimą pirmiausia!"); // Show alert if no achievement is selected
+      setAlertMessage("Pasirinkite pasiekimą pirmiausia!");
       setPopup("alert");
       return;
     }
-    setAchievements(achievements.filter((a) => a.id !== selectedAchievement.id));
-    setSelectedAchievement(null);
-    setPopup(null);
-    setAlertMessage(null); // Clear the alert message after action
-  };
-
-  const updateAchievement = () => {
-    if (!selectedAchievement) {
-      setAlertMessage("Pasirinkite pasiekimą pirmiausia!"); // Show alert if no achievement is selected
+  
+    if (!selectedAchievement.id_Achievement) {
+      setAlertMessage("Pasiekimas neturi galiojančio ID!");
       setPopup("alert");
       return;
     }
-    setAchievements(achievements.map((a) => (a.id === selectedAchievement.id ? selectedAchievement : a)));
-    setSelectedAchievement(null);
-    setPopup(null);
-    setAlertMessage(null); // Clear the alert message after action
+  
+    try {
+      // Siunčiame užklausą į backendą, kad pašalintume pasiekimą pagal id
+      const response = await axios.delete(
+        `http://localhost:8081/achievements/${selectedAchievement.id_Achievement}`
+      );
+  
+      // Patikriname, ar sėkmingai pašalintas pasiekimas
+      if (response.status === 200) {
+        // Pašaliname pasiekimą iš vietinio sąrašo, kad atnaujintume UI
+        setAchievements(achievements.filter((a) => a.id_Achievement !== selectedAchievement.id_Achievement));
+        setSelectedAchievement(null);
+        setPopup(null);
+        setAlertMessage(null);
+      } else {
+        setAlertMessage("Nepavyko ištrinti pasiekimo");
+        setPopup("alert");
+      }
+    } catch (error) {
+      console.error("Error deleting achievement:", error);
+      setAlertMessage("Įvyko klaida bandant ištrinti pasiekimą");
+      setPopup("alert");
+    }
   };
 
-  // Inline CSS
+  // Handle updating an achievement
+  const updateAchievement = async () => {
+    if (!selectedAchievement) {
+      setAlertMessage("Pasirinkite pasiekimą pirmiausia!");
+      setPopup("alert");
+      return;
+    }
+    try {
+      const updatedAchievement = await axios.put(
+        `http://localhost:8081/achievements/${selectedAchievement.id_Achievement}`,
+        selectedAchievement // Send updated data
+      );
+      setAchievements(
+        achievements.map((a) =>
+          a.id_Achievement === updatedAchievement.data.id_Achievement ? updatedAchievement.data : a
+        )
+      );
+      setSelectedAchievement(null);
+      setPopup(null);
+      setAlertMessage(null);
+    } catch (error) {
+      console.error("Error updating achievement:", error);
+    }
+  };
+
+  // Inline CSS (no changes)
   const tableStyle: React.CSSProperties = {
     width: "100%",
     borderCollapse: "collapse",
@@ -195,24 +261,28 @@ const AchievementsPage: React.FC = () => {
         <thead>
           <tr>
             <th style={thStyle}>ID</th>
-            <th style={thStyle}>Pavadinimas</th>
-            <th style={thStyle}>Aprašymas</th>
-            <th style={thStyle}>Taškai</th>
+            <th style={thStyle}>Žuvies svoris</th>
+            <th style={thStyle}>Prizas</th>
             <th style={thStyle}>Data</th>
+            <th style={thStyle}>Žuvies kiekis</th>
+            <th style={thStyle}>Įrašų kiekis</th>
+            <th style={thStyle}>FK Post</th>
           </tr>
         </thead>
         <tbody>
           {achievements.map((a) => (
             <tr
-              key={a.id}
-              style={selectedAchievement?.id === a.id ? selectedRowStyle : tdStyle}
+              key={a.id_Achievement}
+              style={selectedAchievement?.id_Achievement === a.id_Achievement ? selectedRowStyle : tdStyle}
               onClick={() => setSelectedAchievement(a)}
             >
-              <td>{a.id}</td>
-              <td>{a.name}</td>
-              <td>{a.description}</td>
-              <td>{a.points}</td>
+              <td>{a.id_Achievement}</td>
+              <td>{a.fish_weight}</td>
+              <td>{a.prize}</td>
               <td>{a.date}</td>
+              <td>{a.fish_count}</td>
+              <td>{a.post_count}</td>
+              <td>{a.fk_Post}</td>
             </tr>
           ))}
         </tbody>
@@ -224,31 +294,44 @@ const AchievementsPage: React.FC = () => {
         <div style={popupStyle}>
           <h3>Pridėti naują pasiekimą</h3>
           <input
-            type="text"
-            placeholder="Pavadinimas"
-            value={newAchievement.name}
-            onChange={(e) => setNewAchievement({ ...newAchievement, name: e.target.value })}
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            placeholder="Aprašymas"
-            value={newAchievement.description}
-            onChange={(e) => setNewAchievement({ ...newAchievement, description: e.target.value })}
-            style={inputStyle}
-          />
-          <input
             type="number"
-            placeholder="Taškai"
-            value={newAchievement.points}
-            onChange={(e) => setNewAchievement({ ...newAchievement, points: +e.target.value })}
+            placeholder="Žuvies svoris"
+            value={newAchievement.fish_weight}
+            onChange={(e) => setNewAchievement({ ...newAchievement, fish_weight: +e.target.value })}
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            placeholder="Prizas"
+            value={newAchievement.prize}
+            onChange={(e) => setNewAchievement({ ...newAchievement, prize: e.target.value })}
             style={inputStyle}
           />
           <input
             type="date"
-            placeholder="Data"
             value={newAchievement.date}
             onChange={(e) => setNewAchievement({ ...newAchievement, date: e.target.value })}
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            placeholder="Žuvies kiekis"
+            value={newAchievement.fish_count}
+            onChange={(e) => setNewAchievement({ ...newAchievement, fish_count: +e.target.value })}
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            placeholder="Įrašų kiekis"
+            value={newAchievement.post_count}
+            onChange={(e) => setNewAchievement({ ...newAchievement, post_count: +e.target.value })}
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            placeholder="FK Post"
+            value={newAchievement.fk_Post}
+            onChange={(e) => setNewAchievement({ ...newAchievement, fk_Post: +e.target.value })}
             style={inputStyle}
           />
           <button style={buttonStyle} onClick={createAchievement}>
@@ -263,7 +346,7 @@ const AchievementsPage: React.FC = () => {
       {/* Delete Confirmation */}
       {popup === "delete" && selectedAchievement && (
         <div style={popupStyle}>
-          <h3>Ar tikrai norite ištrinti “{selectedAchievement.name}”?</h3>
+          <h3>Ar tikrai norite ištrinti “{selectedAchievement.prize}”?</h3>
           <button style={buttonStyle} onClick={deleteAchievement}>
             Taip
           </button>
@@ -278,26 +361,18 @@ const AchievementsPage: React.FC = () => {
         <div style={popupStyle}>
           <h3>Redaguoti pasiekimą</h3>
           <input
-            type="text"
-            value={selectedAchievement.name}
-            onChange={(e) =>
-              setSelectedAchievement({ ...selectedAchievement, name: e.target.value })
-            }
-            style={inputStyle}
-          />
-          <input
-            type="text"
-            value={selectedAchievement.description}
-            onChange={(e) =>
-              setSelectedAchievement({ ...selectedAchievement, description: e.target.value })
-            }
-            style={inputStyle}
-          />
-          <input
             type="number"
-            value={selectedAchievement.points}
+            value={selectedAchievement.fish_weight}
             onChange={(e) =>
-              setSelectedAchievement({ ...selectedAchievement, points: +e.target.value })
+              setSelectedAchievement({ ...selectedAchievement, fish_weight: +e.target.value })
+            }
+            style={inputStyle}
+          />
+          <input
+            type="text"
+            value={selectedAchievement.prize}
+            onChange={(e) =>
+              setSelectedAchievement({ ...selectedAchievement, prize: e.target.value })
             }
             style={inputStyle}
           />
@@ -306,6 +381,30 @@ const AchievementsPage: React.FC = () => {
             value={selectedAchievement.date}
             onChange={(e) =>
               setSelectedAchievement({ ...selectedAchievement, date: e.target.value })
+            }
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            value={selectedAchievement.fish_count}
+            onChange={(e) =>
+              setSelectedAchievement({ ...selectedAchievement, fish_count: +e.target.value })
+            }
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            value={selectedAchievement.post_count}
+            onChange={(e) =>
+              setSelectedAchievement({ ...selectedAchievement, post_count: +e.target.value })
+            }
+            style={inputStyle}
+          />
+          <input
+            type="number"
+            value={selectedAchievement.fk_Post}
+            onChange={(e) =>
+              setSelectedAchievement({ ...selectedAchievement, fk_Post: +e.target.value })
             }
             style={inputStyle}
           />

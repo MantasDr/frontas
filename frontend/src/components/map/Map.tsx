@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Icon } from "leaflet";
@@ -30,48 +30,41 @@ import { CaretSortIcon } from "@radix-ui/react-icons";
 import { CheckIcon } from "lucide-react";
 
 export type Lake = {
-  id: number;
+  id_Lake: number;
   name: string;
-  location: { coordinates: [number, number] };
   depth: number;
-  area: number;
+  shores: number; // Number of shores added as a variable
+  x: number;
+  y: number;
   description: string;
-  fishIds: number[];
+  fishes: Fish[]; // Fish associated with the lake
 };
 
 export type Fish = {
   id: number;
   name: string;
   count: number;
-  habitat: string; // Add habitat or any additional details
-  description: string; // Add description or more fish details
+  habitat: string;
+  description: string;
 };
 
-// Hardcoded lake and fish data
-const HARD_CODED_LAKES: Lake[] = [
+// Hardcoded fish data
+const HARD_CODED_FISHES: Fish[] = [
   {
     id: 1,
-    name: "Kauno Marios",
-    location: { coordinates: [55.0123, 23.9051] },
-    depth: 25,
-    area: 65,
-    description: "Didelis dirbtinis ežeras Kauno regione.",
-    fishIds: [1, 2],
+    name: "Eserys",
+    count: 5,
+    habitat: "Upės, ežerai",
+    description:
+      "Plėšri žuvis, dažnai randama vandenyse su aukšta deguonies koncentracija.",
   },
   {
     id: 2,
-    name: "Ežeras",
-    location: { coordinates: [55.6721, 24.4567] },
-    depth: 15,
-    area: 12,
-    description: "Ramūs gamtiniai ežeras.",
-    fishIds: [2],
+    name: "Lydeka",
+    count: 8,
+    habitat: "Ežerai ir tvenkiniai",
+    description: "Didelė plėšri žuvis, dažnai randama sekliuose vandenyse.",
   },
-];
-
-const HARD_CODED_FISHES: Fish[] = [
-  { id: 1, name: "Eserys", count: 5, habitat: "Upės, ežerai", description: "Plėšri žuvis, dažnai randama vandenyse su aukšta deguonies koncentracija." },
-  { id: 2, name: "Lydeka", count: 8, habitat: "Ežerai ir tvenkiniai", description: "Didelė plėšri žuvis, dažnai randama sekliuose vandenyse." },
 ];
 
 const normalMarker = new Icon({
@@ -82,28 +75,52 @@ const normalMarker = new Icon({
 });
 
 const Map: React.FC = () => {
+  const [lakes, setLakes] = useState<Lake[]>([]);
   const [selectedLake, setSelectedLake] = useState<Lake | null>(null);
-  const [sliderVal, setSliderVal] = useState([0]); // Default depth filter
-  const [selectedFishes, setSelectedFishes] = useState<Fish[]>([]); // Selected fish for filtering
-  const [showFilters, setShowFilters] = useState(false); // Filter toggle
-  const [selectedFish, setSelectedFish] = useState<Fish | null>(null); // Selected fish for the detailed modal
-
-  const [lakes, setLakes] = useState(HARD_CODED_LAKES);
+  const [sliderVal, setSliderVal] = useState([0]);
+  const [shoreVal, setShoreVal] = useState([0]);
+  const [selectedFishes, setSelectedFishes] = useState<Fish[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedFish, setSelectedFish] = useState<Fish | null>(null);
   const [fishes] = useState(HARD_CODED_FISHES);
 
-  // Filter lakes based on slider and selected fish
-  const filterLakes = () => {
-    const filteredLakes = [];
-    const fishSet = new Set(selectedFishes.map((f) => f.id));
-
-    for (const lake of lakes) {
-      if (lake.depth < sliderVal[0]) continue;
-      if (fishSet.size > 0 && !lake.fishIds.some((id) => fishSet.has(id))) {
-        continue;
+  // Fetch lakes from the backend API
+  useEffect(() => {
+    const fetchLakes = async () => {
+      try {
+        const response = await fetch("http://localhost:8081/api/lakes");
+        if (!response.ok) {
+          throw new Error("Failed to fetch lakes");
+        }
+        const data = await response.json();
+        const mappedLakes = data.map((lake: any) => ({
+          id_Lake: lake.id_Lake,
+          name: lake.name,
+          depth: lake.depth,
+          shores: lake.shores || 0,
+          x: lake.x,
+          y: lake.y,
+          description: lake.description || "No description available",
+          fishes: lake.fishes || [],
+        }));
+        setLakes(mappedLakes);
+      } catch (error) {
+        console.error("Error fetching lakes:", error);
       }
-      filteredLakes.push(lake);
-    }
-    return filteredLakes;
+    };
+
+    fetchLakes();
+  }, []);
+
+  // Filter lakes based on depth, shores, and fish
+  const filterLakes = () => {
+    return lakes.filter(
+      (lake) =>
+        lake.depth >= sliderVal[0] &&
+        lake.shores >= shoreVal[0] &&
+        (selectedFishes.length === 0 ||
+          selectedFishes.some((fish) => lake.fishes.some((lf) => lf.id === fish.id)))
+    );
   };
 
   const filteredLakes = filterLakes();
@@ -124,23 +141,6 @@ const Map: React.FC = () => {
     setSelectedFish(null);
   };
 
-  const getFishInfoForLake = (lake: Lake) => {
-    return lake.fishIds
-      .map((fishId) => {
-        const fish = fishes.find((f) => f.id === fishId);
-        return fish ? (
-          <button
-            key={fish.id}
-            className="text-blue-500 hover:underline"
-            onClick={() => openFishModal(fish)}
-          >
-            {fish.name}: {fish.count} vnt.
-          </button>
-        ) : null;
-      })
-      .reduce((prev, curr) => [prev, ", ", curr]);
-  };
-
   return (
     <div className="relative">
       {/* Filter Button */}
@@ -155,7 +155,7 @@ const Map: React.FC = () => {
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="bg-slate-100 h-[320px] w-[400px] z-50 absolute top-5 right-5 shadow-lg rounded-lg animate-fadeIn">
+        <div className="bg-slate-100 h-[420px] w-[400px] z-50 absolute top-5 right-5 shadow-lg rounded-lg animate-fadeIn">
           <div className="flex justify-between items-center px-4 py-4">
             <h2 className="text-xl font-semibold text-black">Filtras</h2>
             <button
@@ -178,6 +178,7 @@ const Map: React.FC = () => {
               </svg>
             </button>
           </div>
+          {/* Depth Filter */}
           <div className="px-4">
             <p className="py-4">Minimalus ežero gylis:</p>
             <Slider
@@ -188,57 +189,43 @@ const Map: React.FC = () => {
               className="w-[60%]"
             />
             <p>{sliderVal[0]} m.</p>
-            <br />
-            <p className="py-2">Žuvys ežere:</p>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-[200px] justify-between">
-                  {selectedFishes.length > 0
-                    ? selectedFishes.map((fish) => fish.name).join(", ")
-                    : "Pasirinkite žuvį..."}
-                  <CaretSortIcon className="ml-2 h-4 w-4 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandGroup>
-                    <CommandList>
-                      {fishes.map((fish) => (
-                        <CommandItem
-                          key={fish.id}
-                          onSelect={() => {
-                            const isSelected = selectedFishes.some(
-                              (selectedFish) => selectedFish.id === fish.id
-                            );
-                            if (isSelected) {
-                              setSelectedFishes(
-                                selectedFishes.filter(
-                                  (selectedFish) => selectedFish.id !== fish.id
-                                )
-                              );
-                            } else {
-                              setSelectedFishes([...selectedFishes, fish]);
-                            }
-                          }}
-                        >
-                          {fish.name}
-                          <CheckIcon
-                            className={cn("ml-auto h-4 w-4", {
-                              "opacity-100": selectedFishes.some(
-                                (selectedFish) => selectedFish.id === fish.id
-                              ),
-                              "opacity-0": !selectedFishes.some(
-                                (selectedFish) => selectedFish.id === fish.id
-                              ),
-                            })}
-                          />
-                        </CommandItem>
-                      ))}
-                    </CommandList>
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
+          </div>
+
+          {/* Shore Filter */}
+          <div className="px-4 mt-4">
+            <p className="py-4">Minimalus krantų skaičius:</p>
+            <Slider
+              defaultValue={shoreVal}
+              onValueChange={setShoreVal}
+              max={10}
+              step={1}
+              className="w-[60%]"
+            />
+            <p>{shoreVal[0]} krantai.</p>
+          </div>
+
+          {/* Fish Filter */}
+          <div className="px-4 mt-4">
+            <p className="py-4">Pasirinkite žuvų tipą:</p>
+            {fishes.map((fish) => (
+              <div key={fish.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={`fish-${fish.id}`}
+                  checked={selectedFishes.some((f) => f.id === fish.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedFishes([...selectedFishes, fish]);
+                    } else {
+                      setSelectedFishes(
+                        selectedFishes.filter((f) => f.id !== fish.id)
+                      );
+                    }
+                  }}
+                />
+                <label htmlFor={`fish-${fish.id}`}>{fish.name}</label>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -257,8 +244,8 @@ const Map: React.FC = () => {
         {filteredLakes.map((lake) => (
           <Marker
             icon={normalMarker}
-            key={lake.id}
-            position={lake.location.coordinates}
+            key={lake.id_Lake}
+            position={[lake.y, lake.x]} // Use y (latitude) and x (longitude)
             eventHandlers={{
               click: () => openModal(lake),
             }}
@@ -275,12 +262,6 @@ const Map: React.FC = () => {
               <DialogDescription>{selectedLake.description}</DialogDescription>
               <p>
                 <strong>Gylis:</strong> {selectedLake.depth} m
-              </p>
-              <p>
-                <strong>Plotas:</strong> {selectedLake.area} km²
-              </p>
-              <p>
-                <strong>Žuvys ežere:</strong> {getFishInfoForLake(selectedLake)}
               </p>
             </DialogHeader>
           </DialogContent>

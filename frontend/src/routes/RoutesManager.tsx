@@ -31,7 +31,7 @@ const RoutesManager = () => {
       path: "/",
       element: <ProtectedRoute />, // Wrap the component in ProtectedRoute
       children: [
-        /*{
+        {
           path: "/",
           element: (
             <>
@@ -49,63 +49,12 @@ const RoutesManager = () => {
             </>
           ),
         },
-        {
-          path: "/about",
-          element: (
-            <>
-              <Navbar />
-              <About />
-            </>
-          ),
-        },*/
-      ],
-    },
-  ];
-
-  // Define routes accessible only to non-authenticated users
-  const routesForNotAuthenticatedOnly = [
-    {
-      path: "/login",
-      element: (
-        <>
-          <Navbar />
-          <Login />
-        </>
-      ),
-    },
-    {
-      path: "/register",
-      element:  (
-        <>
-          <Navbar />
-          <Register />
-        </>
-      ),
-    },
-    {
-      path: "/",
-      element: (
-        <>
-          <Navbar />
-          <Home />
-        </>
-      ),
-    },
-    {
+      {
       path: "/Feed",
       element: (
         <>
           <Navbar />
           <Feed/>
-        </>
-      ),
-    },
-    {
-      path: "/profile",
-      element: (
-        <>
-          <Navbar />
-          <Profile />
         </>
       ),
     },
@@ -145,6 +94,93 @@ const RoutesManager = () => {
         </>
       ),
     },
+      ],
+    },
+  ];
+
+  // Define routes accessible only to non-authenticated users
+  const routesForNotAuthenticatedOnly = [
+    {
+      path: "/login",
+      element: (
+        <>
+          <Navbar />
+          <Login />
+        </>
+      ),
+    },
+    {
+      path: "/register",
+      element:  (
+        <>
+          <Navbar />
+          <Register />
+        </>
+      ),
+    },
+    {
+      path: "/",
+      element: (
+        <>
+          <Navbar />
+          <Home />
+        </>
+      ),
+    },
+    // {
+    //   path: "/Feed",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <Feed/>
+    //     </>
+    //   ),
+    // },
+    // {
+    //   path: "/profile",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <Profile />
+    //     </>
+    //   ),
+    // },
+    // {
+    //   path: "/LakeAdmin",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <LakeAdmin />
+    //     </>
+    //   ),
+    // },
+    // {
+    //   path: "/FishAdmin",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <FishAdmin />
+    //     </>
+    //   ),
+    // },
+    // {
+    //   path: "/AchievmentAdmin",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <AchievmentAdmin />
+    //     </>
+    //   ),
+    // },
+    // {
+    //   path: "/RankAdmin",
+    //   element: (
+    //     <>
+    //       <Navbar />
+    //       <RankAdmin />
+    //     </>
+    //   ),
+    // },
   ];
 
   // Combine and conditionally include routes based on authentication status
